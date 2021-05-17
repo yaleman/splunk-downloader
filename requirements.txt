@@ -1,0 +1,4 @@
+requests
+loguru
+beautifulsoup4
+click

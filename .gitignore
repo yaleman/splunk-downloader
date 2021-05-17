@@ -1,0 +1,5 @@
+venv/
+splunk*deb
+splunk*msi
+splunk*rpm
+splunk*tgz
