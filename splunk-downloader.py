@@ -48,13 +48,16 @@ def get_and_parse(url: str, cached:bool):
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
-    links = soup.find_all("a", class_="sp-btn-icon-download")
+    links = soup.find_all("a", class_="splunk-btn")
     retlinks = []
     for link in links:
         if link.attrs.get('data-link', False):
             datalink = link.attrs.get('data-link')
             if datalink not in links:
                 retlinks.append(datalink)
+                logger.debug("Adding link to links: {}", datalink)
+        else:
+            logger.debug("Skipping link, doesn't have attr 'datal-linl': {}", link)
     return retlinks
 
 def download_link(url):
@@ -135,6 +138,7 @@ def cli( #pylint: disable=too-many-arguments,too-many-branches
     links = get_and_parse(url=URLS.get(application), cached=cached) + get_and_parse(url=URLS.get(f"{application}_current"), cached=cached)
 
     for link in links:
+        logger.debug("Checking link {}", link)
         splitlink = link.split("/")
         link_os = splitlink[7]
         link_version = splitlink[6]
@@ -158,6 +162,8 @@ def cli( #pylint: disable=too-many-arguments,too-many-branches
         logger.error("No results found")
         return False
 
+    # output stage
+    results.sort(reverse=True)
     for result in results:
         print(result)
         if download:
