@@ -39,10 +39,12 @@ def get_and_parse(url: str, cached:bool):
         # wget or something first
         logger.debug("Using cached file")
         if 'forwarder' in url:
-            content = open('universalforwarder.html', 'r').read()
+            cachefile = 'universalforwarder.html'
         else:
-            content = open('previous-releases.html', 'r').read()
-        soup = BeautifulSoup(content, 'html.parser')
+            cachefile = 'previous-releases.html'
+
+        with open(cachefile, 'r') as file_handle:
+            soup = BeautifulSoup(file_handle.read(), 'html.parser')
     else:
         logger.debug("Pulling URL {}", url)
         response = requests.get(url)
