@@ -11,6 +11,8 @@
 
 """
 
+
+from datetime import datetime
 import os
 import sys
 
@@ -31,6 +33,17 @@ URLS = {
 }
 
 
+def download_page(url:str, cache_file: str=""):
+    """ download the page and store it if cache_file is set """
+    logger.debug("Pulling URL {}", url)
+    response = requests.get(url)
+    response.raise_for_status()
+    if cache_file.strip() != "":
+        logger.warning("Writing {}", cache_file)
+        with open(cache_file, 'wb') as file_handle:
+            file_handle.write(response.content)
+    return response.content
+
 def get_and_parse(url: str, cached:bool):
     """ grabs the url and soups it, returning a list of links """
     if cached:
@@ -43,13 +56,16 @@ def get_and_parse(url: str, cached:bool):
         else:
             cachefile = 'previous-releases.html'
 
+        if not os.path.exists(cachefile):
+            download_page(url, cache_file=cachefile)
+        else:
+            update_time = os.stat(cachefile).st_mtime
+            file_age = round(datetime.now().timestamp() - update_time,0)
+            logger.info("Cache file {} is {} seconds old.", cachefile, file_age)
         with open(cachefile, 'r', encoding="utf8") as file_handle:
             soup = BeautifulSoup(file_handle.read(), 'html.parser')
     else:
-        logger.debug("Pulling URL {}", url)
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
+        soup = BeautifulSoup(download_page(url), 'html.parser')
     links = soup.find_all("a", class_="splunk-btn")
     retlinks = []
     for link in links:
