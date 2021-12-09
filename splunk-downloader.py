@@ -43,7 +43,7 @@ def get_and_parse(url: str, cached:bool):
         else:
             cachefile = 'previous-releases.html'
 
-        with open(cachefile, 'r') as file_handle:
+        with open(cachefile, 'r', encoding="utf8") as file_handle:
             soup = BeautifulSoup(file_handle.read(), 'html.parser')
     else:
         logger.debug("Pulling URL {}", url)
