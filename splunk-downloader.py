@@ -110,6 +110,7 @@ def setup_logging(logger_object=logger, debug: bool=True,
 
 @click.command(help='Application needs to be either forwarder or enterprise.')
 @click.option('--cached', is_flag=True, default=False)
+@click.option("--arch", "-a", help="CPU Architecture filter - based on filename which is messy")
 @click.option('--debug', '-d', is_flag=True, default=False, help="Enable debug mode")
 @click.option('--download', '-D', is_flag=True, default=False, help="Prompt to download to the local directory")
 @click.argument('application',
@@ -123,7 +124,7 @@ def setup_logging(logger_object=logger, debug: bool=True,
               type=click.Choice(['deb', 'msi', 'rpm', 'tgz'], case_sensitive=False),
               help="Package type to match.",
               )
-def cli( #pylint: disable=too-many-arguments,too-many-branches
+def cli( #pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
         application: str,
         debug: bool,
         version_filter: str,
@@ -131,6 +132,7 @@ def cli( #pylint: disable=too-many-arguments,too-many-branches
         download:bool,
         cached:bool,
         packagetype: str,
+        arch: str,
         ):
     """ does the CLI thing """
     setup_logging(logger, debug)
@@ -174,6 +176,22 @@ def cli( #pylint: disable=too-many-arguments,too-many-branches
             if not link.endswith(packagetype):
                 logger.debug("Skipping {} as package type does not match", link, packagetype)
                 continue
+
+        if arch:
+            try:
+                # .tar.Z fix is for solaris
+                tmp_link_arch = str(link)
+                if "windows" in tmp_link_arch:
+                    tmp_link_arch = tmp_link_arch.replace("-release","")
+                if "solaris" in tmp_link_arch:
+                    tmp_link_arch = tmp_link_arch.replace(".tar.Z", ".tar")
+                link_arch = tmp_link_arch.split(".")[-2].split('-')[-1]
+                logger.warning("Arch: {} link: {}", link_arch, link)
+                if link_arch.lower() != arch.lower():
+                    continue
+            except Exception: #pylint: disable=broad-except
+                if arch not in link:
+                    continue
         if link not in results:
             results.append(link)
     if not results:
