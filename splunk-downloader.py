@@ -155,7 +155,11 @@ def cli( #pylint: disable=too-many-arguments,too-many-branches,too-many-locals,t
         #    logger.error("Va")
         logger.debug("looking for package type: {}", packagetype)
     results = []
-    links = get_and_parse(url=URLS.get(application), cached=cached) + get_and_parse(url=URLS.get(f"{application}_current"), cached=cached)
+    links = get_and_parse(url=URLS[application], cached=cached)
+    try:
+        links = links + get_and_parse(url=URLS[f"{application}_current"], cached=cached)
+    except KeyError:
+        pass
 
     for link in links:
         logger.debug("Checking link {}", link)
