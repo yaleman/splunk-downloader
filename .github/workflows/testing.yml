@@ -20,18 +20,19 @@ jobs:
         with:
           python-version: '3.9'
 
+      - name: Installing poetry
+        run: |
+          python -m pip install --upgrade pip poetry
+
       - name: Running pytest
         run: |
-          python -m pip install .
-          python -m pytest
+          poetry run python -m pytest
 
       - name: Running mypy
         run: |
-          python -m pip install .
-          python -m mypy splunk_downloader
+          poetry run python -m mypy splunk_downloader *.py
 
       - name: Running pylint
         run: |
-          python -m pip install .
-          python -m pylint --rcfile=.pylintrc splunk_downloader
+          poetry run python -m pylint splunk_downloader *.py
 
