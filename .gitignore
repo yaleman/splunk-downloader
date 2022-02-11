@@ -4,3 +4,11 @@ splunk*msi
 splunk*rpm
 splunk*tgz
 *.html
+**/__pycache__/*
+.vscode/
+.DS_Store
+config.py
+*.egg-info/
+dist/
+.env
+build/
