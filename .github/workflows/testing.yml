@@ -18,20 +18,20 @@ jobs:
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: '3.9'
 
       - name: Running pytest
-        uses: fylein/python-pytest-github-action@v2
-        with:
-          args: python -m pip install . && python -m pytest
+        run: |
+          python -m pip install .
+          python -m pytest
 
       - name: Running mypy
-        uses: fylein/python-pytest-github-action@v2
-        with:
-          args: python -m pip install . && python -m mypy splunk_downloader
+        run: |
+          python -m pip install .
+          python -m mypy splunk_downloader
 
       - name: Running pylint
-        uses: fylein/python-pylint-github-action@v4
-        with:
-          args: python -m pip install . && python -m pylint --rcfile=.pylintrc splunk_downloader
+        run: |
+          python -m pip install .
+          python -m pylint --rcfile=.pylintrc splunk_downloader
 
