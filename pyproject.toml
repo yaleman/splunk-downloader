@@ -24,3 +24,6 @@ pylint-pydantic = "^0.1.4"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+splunk-downloader = "splunk_downloader.__main__:cli"

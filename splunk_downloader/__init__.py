@@ -3,6 +3,7 @@
 import os
 from datetime import datetime
 import re
+from typing import List
 
 from distutils.version import LooseVersion
 
@@ -79,7 +80,7 @@ def download_link(url) -> bool:
     if response.strip().lower() not in ("y", "yes"):
         logger.info("Cancelled at user request")
         return False
-    logger.debug("Downloading {}", url)
+    logger.info("Downloading {}", url)
     download_response = requests.get(url)
     download_response.raise_for_status()
     filename = url.split("/")[-1]
@@ -103,6 +104,19 @@ class LinkData(SeenData):
         """ configuration """
         arbitrary_types_allowed = True
 
+
+def filter_by_latest(endstate: List[LinkData]
+    ) -> List[LinkData]:
+    """ filters by the latest version """
+    seen_list = []
+    results = []
+    for result in endstate:
+        seen = SeenData.parse_obj(result)
+        if seen not in seen_list:
+            seen_list.append(seen)
+            results.append(result)
+
+    return results
 
 def get_data_from_url(url: str) -> LinkData:
     """ returns the version from the url """

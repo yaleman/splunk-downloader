@@ -16,7 +16,7 @@ from typing import List
 import click
 from loguru import logger
 
-from . import PACKAGES, get_and_parse, download_link, get_data_from_url, LinkData, SeenData
+from . import PACKAGES, filter_by_latest,  get_and_parse, download_link, get_data_from_url, LinkData
 
 URLS = {
     "enterprise": "https://www.splunk.com/en_us/download/previous-releases.html",
@@ -172,17 +172,6 @@ def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
     endstate: List[LinkData] = sorted(results, key=lambda k: k.version, reverse=True )
 
 
-    def filter_by_latest(results: List[LinkData]) -> List[LinkData]:
-        """ filters by the latest version """
-        seen_list = []
-        results = []
-        for result in endstate:
-            seen = SeenData.parse_obj(result)
-            if seen not in seen_list:
-                seen_list.append(seen)
-                results.append(result)
-
-        return results
 
     # filter by latest
     if latest:
