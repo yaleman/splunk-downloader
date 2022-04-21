@@ -17,7 +17,7 @@ pydantic = "^1.9.0"
 pylint = "^2.13.7"
 pytest = "^7.1.1"
 black = "^22.3.0"
-mypy = "^0.931"
+mypy = "^0.942"
 types-requests = "^2.27.20"
 pylint-pydantic = "^0.1.4"
 
