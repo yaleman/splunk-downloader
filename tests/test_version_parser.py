@@ -33,7 +33,7 @@ def test_more_things() -> None:
         for url in TEST_DATA[version]:
             result = get_data_from_url(url)
             assert result
-            assert result.version == version
+            assert str(result.version) == version
 
 def test_pkg_parser() -> None:
     """ testing the url parser """

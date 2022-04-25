@@ -6,12 +6,12 @@ import re
 import sys
 from typing import Any, List, Optional
 
-from distutils.version import LooseVersion
 
 from bs4 import BeautifulSoup #type: ignore
 import click
 from loguru import logger
 import requests
+from packaging.version import Version
 import pydantic
 
 PACKAGES =  [
@@ -108,7 +108,7 @@ class SeenData(pydantic.BaseModel):
 class LinkData(SeenData):
     """ Full data for a link. """
     url: str
-    version: LooseVersion
+    version: Version
 
     class Config:
         """ configuration """
@@ -145,9 +145,11 @@ def get_data_from_url(url: str) -> LinkData:
 
     arch = get_arch_from_package(url)
 
+    version_object = Version(versionmatch["version"])
+
     parsed = LinkData(
         arch = arch,
-        version = LooseVersion(versionmatch["version"]),
+        version = version_object,
         url=url,
         os = versionmatch["os"],
         package_type=package_type.group()
