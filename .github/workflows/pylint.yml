@@ -22,5 +22,5 @@ jobs:
           python --version
           python -m pip install --quiet --no-cache-dir --upgrade poetry
           poetry install
-          poetry run pylint $(basename $(pwd) | sed -E 's/-/_/g'))
+          poetry run pylint $(basename $(pwd) | sed -E 's/-/_/g')
           poetry run pylint tests/
