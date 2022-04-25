@@ -26,7 +26,7 @@ TEST_DATA = {
     ]
 }
 
-def test_more_things():
+def test_more_things() -> None:
     """ more tests based on live data """
 
     for version in TEST_DATA:
@@ -35,7 +35,7 @@ def test_more_things():
             assert result
             assert result.version == version
 
-def test_pkg_parser():
+def test_pkg_parser() -> None:
     """ testing the url parser """
     result = PACKAGE_MATCHER.search(TEST_DATA["7.2.9.1"][0])
     assert result
