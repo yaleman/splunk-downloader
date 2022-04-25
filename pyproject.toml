@@ -26,4 +26,13 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-splunk-downloader = "splunk_downloader.__main__:cli"
+splunk-downloader = "splunk_downloader:cli"
+
+[tool.pylint.MASTER]
+max-line-length=200
+
+disable="W0511,consider-using-dict-items,duplicate-code"
+
+# https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
+extension-pkg-whitelist="pydantic"
+load-plugins="pylint_pydantic"
