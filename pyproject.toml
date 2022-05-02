@@ -18,7 +18,7 @@ packaging = "^21.3"
 pylint = "^2.13.7"
 pytest = "^7.1.2"
 black = "^22.3.0"
-mypy = "^0.942"
+mypy = "^0.950"
 types-requests = "^2.27.20"
 pylint-pydantic = "^0.1.4"
 
