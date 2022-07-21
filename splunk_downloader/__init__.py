@@ -128,7 +128,7 @@ def filter_by_latest(endstate: List[LinkData]
 
     return results
 
-def get_data_from_url(url: str) -> LinkData:
+def get_data_from_url(url: str) -> None | LinkData:
     """ returns the version from the url """
     version_finder = re.compile(r'releases\/(?P<version>[^\/]+)\/(?P<os>[^\/]+)')
 
@@ -141,7 +141,8 @@ def get_data_from_url(url: str) -> LinkData:
 
     package_type = PACKAGE_MATCHER.search(url)
     if package_type is None:
-        raise ValueError(f"Failed to parse package version from link: {url}")
+        logger.warning(f"Failed to parse package version from link: {url}")
+        return None
 
     arch = get_arch_from_package(url)
 
@@ -282,6 +283,9 @@ def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
     for link in links:
         logger.debug("Checking link {}", link)
         link_data = get_data_from_url(link)
+        if link_data is None:
+            logger.debug("Skipping {}, data is None", link)
+            continue
 
         if os_filter:
             if link_data.os != os_filter:
