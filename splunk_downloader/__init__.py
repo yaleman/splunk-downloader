@@ -128,7 +128,7 @@ def filter_by_latest(endstate: List[LinkData]
 
     return results
 
-def get_data_from_url(url: str) -> None | LinkData:
+def get_data_from_url(url: str) -> Optional[LinkData]:
     """ returns the version from the url """
     version_finder = re.compile(r'releases\/(?P<version>[^\/]+)\/(?P<os>[^\/]+)')
 
