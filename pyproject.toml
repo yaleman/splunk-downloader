@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "splunk_downloader"
-version = "0.0.3"
+version = "0.0.4"
 description = "Download your splunk binaries with this quick tool."
 authors = ["James Hodgkinson <james@terminaloutcomes.com>"]
 license = "MIT"

@@ -40,7 +40,7 @@ URLS = {
 def download_page(url: str, cache_file: str = "") -> bytes:
     """ download the page and store it if cache_file is set """
     logger.debug("Pulling URL {}", url)
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
     response.raise_for_status()
     if cache_file.strip() != "":
         logger.warning("Writing {}", cache_file)
@@ -91,7 +91,7 @@ def download_link(url: str) -> bool:
         logger.info("Cancelled at user request")
         return False
     logger.info("Downloading {}", url)
-    download_response = requests.get(url)
+    download_response = requests.get(url, timeout=30)
     download_response.raise_for_status()
     filename = url.split("/")[-1]
     with open(filename, "wb") as download_handle:
