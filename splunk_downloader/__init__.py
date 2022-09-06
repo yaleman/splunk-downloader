@@ -7,27 +7,27 @@ import sys
 from typing import Any, List, Optional
 
 
-from bs4 import BeautifulSoup #type: ignore
+from bs4 import BeautifulSoup  # type: ignore
 import click
 from loguru import logger
 import requests
 from packaging.version import Version
 import pydantic
 
-PACKAGES =  [
+PACKAGES = [
     "deb",
     "dmg",
     "msi",
     "p5p",
-    r'pkg\.Z',
+    r"pkg\.Z",
     "rpm",
     "tgz",
     "txz",
-    r'tar\.Z',
+    r"tar\.Z",
     "zip",
 ]
 
-PACKAGE_MATCHER = re.compile(r'('+'|'.join(PACKAGES)+')$')
+PACKAGE_MATCHER = re.compile(r"(" + "|".join(PACKAGES) + ")$")
 
 
 URLS = {
@@ -37,8 +37,9 @@ URLS = {
     "forwarder_current": "https://www.splunk.com/en_us/download/universal-forwarder.html",
 }
 
+
 def download_page(url: str, cache_file: str = "") -> bytes:
-    """ download the page and store it if cache_file is set """
+    """download the page and store it if cache_file is set"""
     logger.debug("Pulling URL {}", url)
     response = requests.get(url, timeout=30)
     response.raise_for_status()
@@ -50,7 +51,7 @@ def download_page(url: str, cache_file: str = "") -> bytes:
 
 
 def get_and_parse(url: str, cached: bool) -> List[Any]:
-    """ grabs the url and soups it, returning a list of links """
+    """grabs the url and soups it, returning a list of links"""
     if cached:
         # this should only really be used for debugging and
         # you need to download the URLs with
@@ -85,7 +86,7 @@ def get_and_parse(url: str, cached: bool) -> List[Any]:
 
 
 def download_link(url: str) -> bool:
-    """ downloads a link """
+    """downloads a link"""
     response = input(f"Would you like to download {url}? ")
     if response.strip().lower() not in ("y", "yes"):
         logger.info("Cancelled at user request")
@@ -98,26 +99,30 @@ def download_link(url: str) -> bool:
         download_handle.write(download_response.content)
     return True
 
+
 class SeenData(pydantic.BaseModel):
-    """ Data for when you want to see you've seen an os/package/arch combination. """
+    """Data for when you want to see you've seen an os/package/arch combination."""
+
     os: str
     arch: str
     package_type: str
 
-#pylint: disable=too-few-public-methods
+
+# pylint: disable=too-few-public-methods
 class LinkData(SeenData):
-    """ Full data for a link. """
+    """Full data for a link."""
+
     url: str
     version: Version
 
     class Config:
-        """ configuration """
+        """configuration"""
+
         arbitrary_types_allowed = True
 
 
-def filter_by_latest(endstate: List[LinkData]
-    ) -> List[LinkData]:
-    """ filters by the latest version """
+def filter_by_latest(endstate: List[LinkData]) -> List[LinkData]:
+    """filters by the latest version"""
     seen_list = []
     results = []
     for result in endstate:
@@ -128,9 +133,10 @@ def filter_by_latest(endstate: List[LinkData]
 
     return results
 
+
 def get_data_from_url(url: str) -> Optional[LinkData]:
-    """ returns the version from the url """
-    version_finder = re.compile(r'releases\/(?P<version>[^\/]+)\/(?P<os>[^\/]+)')
+    """returns the version from the url"""
+    version_finder = re.compile(r"releases\/(?P<version>[^\/]+)\/(?P<os>[^\/]+)")
 
     result = version_finder.search(url)
     if not result:
@@ -149,16 +155,17 @@ def get_data_from_url(url: str) -> Optional[LinkData]:
     version_object = Version(versionmatch["version"])
 
     parsed = LinkData(
-        arch = arch,
-        version = version_object,
+        arch=arch,
+        version=version_object,
         url=url,
-        os = versionmatch["os"],
-        package_type=package_type.group()
+        os=versionmatch["os"],
+        package_type=package_type.group(),
     )
     return parsed
 
+
 def get_arch_from_package(url: str) -> str:
-    """ gets the arch from the package """
+    """gets the arch from the package"""
     # .tar.Z fix is for solaris
 
     if "windows" in url:
@@ -170,13 +177,12 @@ def get_arch_from_package(url: str) -> str:
     return link_arch
 
 
-
 def setup_logging(
-    logger_object: Any=logger,
+    logger_object: Any = logger,
     debug: bool = True,
-    log_sink: Optional[Any]=sys.stderr,
+    log_sink: Optional[Any] = sys.stderr,
 ) -> None:
-    """ does logging configuration """
+    """does logging configuration"""
     # use the one from the environment, where possible
     loguru_level = os.getenv("LOGURU_LEVEL", "INFO")
 
@@ -191,7 +197,12 @@ def setup_logging(
 
 
 @click.command(help="Application needs to be either forwarder or enterprise.")
-@click.option("--cached", is_flag=True, default=False)
+@click.option(
+    "--cached",
+    is_flag=True,
+    default=False,
+    help="Use a locally cached version of the source data.",
+)
 @click.option(
     "--arch", "-a", help="CPU Architecture filter - based on filename which is messy"
 )
@@ -219,22 +230,24 @@ def setup_logging(
     type=click.Choice(
         ["windows", "linux", "solaris", "osx", "freebsd", "aix"], case_sensitive=False
     ),
-    help="OS string to match, valid options for Enterprise: (linux|windows|osx), Forwarder: {(windows|linux|solaris|osx|freebsd|aix)}",
+    help="OS string to match, valid options for Enterprise: (linux|windows|osx), Forwarder: (windows|linux|solaris|osx|freebsd|aix)",
 )
 @click.option(
     "--type",
     "-t",
     "packagetype",
     type=click.Choice(
-        [ el.replace("\\", '') for el in PACKAGES],
+        [el.replace("\\", "") for el in PACKAGES],
         case_sensitive=False,
-        ),
+    ),
     help="Package type to match.",
 )
 @click.option(
-    "--latest", "-l", is_flag=True, help="Show only the latest version for any given os/package/arch combination."
+    "--latest",
+    "-l",
+    is_flag=True,
+    help="Show only the latest version for any given os/package/arch combination.",
 )
-
 def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
     application: Optional[str] = None,
     debug: bool = False,
@@ -246,7 +259,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
     arch: Optional[str] = None,
     latest: bool = False,
 ) -> None:
-    """ does the CLI thing """
+    """does the CLI thing"""
     setup_logging(logger, debug)
 
     if application is None:
@@ -314,10 +327,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
         logger.error("No results found")
         return
 
-
-    endstate: List[LinkData] = sorted(results, key=lambda k: k.version, reverse=True )
-
-
+    endstate: List[LinkData] = sorted(results, key=lambda k: k.version, reverse=True)
 
     # filter by latest
     if latest:
