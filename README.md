@@ -3,12 +3,13 @@
 A little script to help download Splunk installers. You really should agree to the download terms if you're going to use this, just sayin'.
 
 ```
-Usage: python -m splunk_downloader [OPTIONS] {enterprise|forwarder}
+Usage: splunk-downloader [OPTIONS] {enterprise|forwarder}
 
   Application needs to be either forwarder or enterprise.
 
 Options:
-  --cached
+  --cached                        Use a locally cached version of the source
+                                  data.
   -a, --arch TEXT                 CPU Architecture filter - based on filename
                                   which is messy
   -d, --debug                     Enable debug mode
@@ -19,7 +20,7 @@ Options:
   -o, --os [windows|linux|solaris|osx|freebsd|aix]
                                   OS string to match, valid options for
                                   Enterprise: (linux|windows|osx), Forwarder:
-                                  {(windows|linux|solaris|osx|freebsd|aix)}
+                                  (windows|linux|solaris|osx|freebsd|aix)
   -t, --type [deb|dmg|msi|p5p|pkg.Z|rpm|tgz|txz|tar.Z|zip]
                                   Package type to match.
   -l, --latest                    Show only the latest version for any given
