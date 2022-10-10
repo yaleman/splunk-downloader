@@ -92,10 +92,17 @@ def download_link(url: str) -> bool:
         logger.info("Cancelled at user request")
         return False
     logger.info("Downloading {}", url)
-    download_response = requests.get(url, timeout=30)
-    download_response.raise_for_status()
+    # this is intentionally a long-running task
+    try:
+        # pylint: disable=missing-timeout
+        download_response = requests.get(url)
+        download_response.raise_for_status()
+    except requests.exceptions.Timeout as timeout_error:
+        logger.error("Timed out downloading from {}: {}", url, timeout_error)
+        return False
     filename = url.split("/")[-1]
     with open(filename, "wb") as download_handle:
+        logger.info("Writing {} bytes to {}", len(download_response.content), filename)
         download_handle.write(download_response.content)
     return True
 
