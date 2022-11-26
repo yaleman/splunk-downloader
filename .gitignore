@@ -12,3 +12,4 @@ config.py
 dist/
 .env
 build/
+poetry.lock
