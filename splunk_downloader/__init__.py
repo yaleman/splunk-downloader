@@ -12,7 +12,7 @@ import click
 from loguru import logger
 import requests
 from packaging.version import Version
-import pydantic
+from pydantic import BaseModel, ConfigDict
 
 PACKAGES = [
     "deb",
@@ -32,7 +32,7 @@ PACKAGE_MATCHER = re.compile(r"(" + "|".join(PACKAGES) + ")$")
 
 URLS = {
     "enterprise": "https://www.splunk.com/en_us/download/previous-releases.html",
-    "enterprise_current": "https://www.splunk.com/en_us/download/get-started-with-your-free-trial.html",
+    "enterprise_current": "https://www.splunk.com/en_us/download/splunk-enterprise.html",
     "forwarder": "https://www.splunk.com/en_us/download/previous-releases/universalforwarder.html",
     "forwarder_current": "https://www.splunk.com/en_us/download/universal-forwarder.html",
 }
@@ -107,25 +107,26 @@ def download_link(url: str) -> bool:
     return True
 
 
-class SeenData(pydantic.BaseModel):
+class SeenData(BaseModel):
     """Data for when you want to see you've seen an os/package/arch combination."""
 
     os: str
     arch: str
     package_type: str
 
+    model_config = ConfigDict(extra="ignore")
 
-# pylint: disable=too-few-public-methods
-class LinkData(SeenData):
+
+class LinkData(BaseModel):
     """Full data for a link."""
 
+    os: str
+    arch: str
+    package_type: str
     url: str
     version: Version
 
-    class Config:
-        """configuration"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 def filter_by_latest(endstate: List[LinkData]) -> List[LinkData]:
@@ -133,9 +134,10 @@ def filter_by_latest(endstate: List[LinkData]) -> List[LinkData]:
     seen_list = []
     results = []
     for result in endstate:
-        seen = SeenData.parse_obj(result)
-        if seen not in seen_list:
-            seen_list.append(seen)
+        seen = SeenData.model_validate(result.model_dump())
+        logger.debug("Checking if we have seen {}", seen.model_dump())
+        if seen.model_dump() not in seen_list:
+            seen_list.append(seen.model_dump())
             results.append(result)
 
     return results
@@ -293,6 +295,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 
     if packagetype != "":
         logger.debug("looking for package type: {}", packagetype)
+
     results: List[LinkData] = []
     links = get_and_parse(url=URLS[application], cached=cached)
     try:
