@@ -30,10 +30,13 @@ build-backend = "poetry.core.masonry.api"
 splunk-downloader = "splunk_downloader:cli"
 
 [tool.pylint.MASTER]
-max-line-length=200
+max-line-length = 200
 
-disable="W0511,consider-using-dict-items,duplicate-code"
+disable = "W0511,consider-using-dict-items,duplicate-code"
 
 # https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
-extension-pkg-whitelist="pydantic"
-load-plugins="pylint_pydantic"
+extension-pkg-whitelist = "pydantic"
+load-plugins = "pylint_pydantic"
+
+[tool.ruff]
+line-length = 150
