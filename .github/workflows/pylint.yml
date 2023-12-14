@@ -1,4 +1,5 @@
-name: pylint
+---
+name: Python Linting
 
 "on":
   push:
@@ -7,20 +8,20 @@ name: pylint
   pull_request:
 
 jobs:
-  pylint:
+  python_linting:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
-      - name: Set up Python 3.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
       - name: Running tests
         run: |
           python --version
           python -m pip install --quiet --no-cache-dir --upgrade poetry
           poetry install
-          poetry run pylint $(basename $(pwd) | sed -E 's/-/_/g')
-          poetry run pylint tests/
+          poetry run ruff $(basename $(pwd) | sed -E 's/-/_/g')
+          poetry run ruff tests/
