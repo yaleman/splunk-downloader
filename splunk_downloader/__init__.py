@@ -1,4 +1,4 @@
-""" Splunk downloader """
+"""Splunk downloader"""
 
 import os
 from datetime import datetime
@@ -28,12 +28,13 @@ PACKAGES = [
 ]
 
 PACKAGE_MATCHER = re.compile(r"(" + "|".join(PACKAGES) + ")$")
-
+TARGET_LINK_ATTR = "data-link"
+TARGET_LINK_ATTR_FALLBACK = "data-wget"
 
 URLS = {
     "enterprise": "https://www.splunk.com/en_us/download/previous-releases.html",
     "enterprise_current": "https://www.splunk.com/en_us/download/splunk-enterprise.html",
-    "forwarder": "https://www.splunk.com/en_us/download/previous-releases/universalforwarder.html",
+    "forwarder": "https://www.splunk.com/en_us/download/previous-releases-universal-forwarder.html",
     "forwarder_current": "https://www.splunk.com/en_us/download/universal-forwarder.html",
 }
 
@@ -75,13 +76,25 @@ def get_and_parse(url: str, cached: bool) -> List[Any]:
     links = soup.find_all("a", class_="splunk-btn")
     retlinks = []
     for link in links:
-        if link.attrs.get("data-link", False):
-            datalink = link.attrs.get("data-link")
+        if link.attrs.get(TARGET_LINK_ATTR, None) is not None:
+            datalink = link.attrs.get(TARGET_LINK_ATTR)
+            if datalink.endswith(".ogg"):
+                logger.debug("Skipping .ogg link, weirdos: {}", link)
+                continue
             if datalink not in links:
                 retlinks.append(datalink)
                 logger.debug("Adding link to links: {}", datalink)
+        elif link.attrs.get(TARGET_LINK_ATTR_FALLBACK, None) is not None:
+            logger.debug("Falling back to wget link")
+            datalink = link.attrs.get(TARGET_LINK_ATTR_FALLBACK).split(" ")[-1].replace('"', "")
+            if datalink.endswith(".ogg"):
+                logger.debug("Skipping .ogg wget link, weirdos: {}", link)
+                continue
+            if datalink not in links:
+                retlinks.append(datalink)
+                logger.debug("Adding wget link to links: {}", datalink)
         else:
-            logger.debug("Skipping link, doesn't have attr 'datal-linl': {}", link)
+            logger.debug("Skipping link, doesn't have attr '{}': {}", TARGET_LINK_ATTR, link)
     return retlinks
 
 
@@ -212,9 +225,7 @@ def setup_logging(
     default=False,
     help="Use a locally cached version of the source data.",
 )
-@click.option(
-    "--arch", "-a", help="CPU Architecture filter - based on filename which is messy"
-)
+@click.option("--arch", "-a", help="CPU Architecture filter - based on filename which is messy")
 @click.option("--debug", "-d", is_flag=True, default=False, help="Enable debug mode")
 @click.option(
     "--download",
@@ -223,9 +234,7 @@ def setup_logging(
     default=False,
     help="Prompt to download to the local directory",
 )
-@click.argument(
-    "application", type=click.Choice(["enterprise", "forwarder"], case_sensitive=False)
-)
+@click.argument("application", type=click.Choice(["enterprise", "forwarder"], case_sensitive=False))
 @click.option(
     "--version",
     "-v",
@@ -236,9 +245,7 @@ def setup_logging(
     "--os",
     "-o",
     "os_filter",
-    type=click.Choice(
-        ["windows", "linux", "solaris", "osx", "freebsd", "aix"], case_sensitive=False
-    ),
+    type=click.Choice(["windows", "linux", "solaris", "osx", "freebsd", "aix"], case_sensitive=False),
     help="OS string to match, valid options for Enterprise: (linux|windows|osx), Forwarder: (windows|linux|solaris|osx|freebsd|aix)",
 )
 @click.option(
@@ -317,15 +324,11 @@ def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 
         if version_filter:
             if not str(link_data.version).startswith(version_filter):
-                logger.debug(
-                    "Skipping {} as version does not match {}", link, link_data
-                )
+                logger.debug("Skipping {} as version does not match {}", link, link_data)
                 continue
         if packagetype:
             if not packagetype == link_data.package_type:
-                logger.debug(
-                    "Skipping {} as package type does not match", link, packagetype
-                )
+                logger.debug("Skipping {} as package type does not match", link, packagetype)
                 continue
         if arch:
             if link_data.arch.lower() != arch.lower():
