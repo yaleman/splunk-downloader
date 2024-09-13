@@ -22,4 +22,4 @@ jobs:
         run: |
           python --version
           python -m pip install --quiet --no-cache-dir --upgrade uv
-          uv run run python -m pytest
+          uv run pytest
