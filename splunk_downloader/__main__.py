@@ -9,7 +9,7 @@ requires the following python packages:
 
 """
 
-from . import cli
+from splunk_downloader import cli
 
 if __name__ == "__main__":
     cli()
