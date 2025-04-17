@@ -13,3 +13,4 @@ dist/
 .env
 build/
 poetry.lock
+cache/*

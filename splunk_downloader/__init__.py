@@ -2,6 +2,7 @@
 
 import os
 from datetime import datetime
+from pathlib import Path
 import re
 import sys
 from typing import Any, List, Optional
@@ -14,54 +15,42 @@ import requests
 from packaging.version import Version
 from pydantic import BaseModel, ConfigDict
 
-PACKAGES = [
-    "deb",
-    "dmg",
-    "msi",
-    "p5p",
-    r"pkg\.Z",
-    "rpm",
-    "tgz",
-    "txz",
-    r"tar\.Z",
-    "zip",
-]
+from .constants import PACKAGES, TARGET_LINK_ATTR, TARGET_LINK_ATTR_FALLBACK, URLS
 
 PACKAGE_MATCHER = re.compile(r"(" + "|".join(PACKAGES) + ")$")
-TARGET_LINK_ATTR = "data-link"
-TARGET_LINK_ATTR_FALLBACK = "data-wget"
-
-URLS = {
-    "enterprise": "https://www.splunk.com/en_us/download/previous-releases.html",
-    "enterprise_current": "https://www.splunk.com/en_us/download/splunk-enterprise.html",
-    "forwarder": "https://www.splunk.com/en_us/download/previous-releases-universal-forwarder.html",
-    "forwarder_current": "https://www.splunk.com/en_us/download/universal-forwarder.html",
-}
 
 
-def download_page(url: str, cache_file: str = "") -> bytes:
+def download_page(url: str, cache_file: Optional[Path]) -> bytes:
     """download the page and store it if cache_file is set"""
     logger.debug("Pulling URL {}", url)
     response = requests.get(url, timeout=30)
     response.raise_for_status()
-    if cache_file.strip() != "":
+    if cache_file is not None:
         logger.warning("Writing {}", cache_file)
         with open(cache_file, "wb") as file_handle:
             file_handle.write(response.content)
     return response.content
 
 
-def get_and_parse(url: str, cached: bool) -> List[Any]:
+def get_and_parse(url: str, cached: bool, cache_path: Optional[Path] = None) -> List[str]:
     """grabs the url and soups it, returning a list of links"""
     if cached:
         # this should only really be used for debugging and
         # you need to download the URLs with
         # wget or something first
         logger.debug("Using cached file")
+        if cache_path is None:
+            cache_path = Path("./cache/")
+        if not isinstance(cache_path, Path):
+            raise ValueError(f"Cache path '{cache_path}' must be a Path object")
+        if not cache_path.exists():
+            raise FileNotFoundError(f"Cache path '{cache_path}' does not exist!")
+        if not cache_path.is_dir():
+            raise ValueError(f"Cache path '{cache_path}' is not a directory!")
         if "forwarder" in url:
-            cachefile = "universalforwarder.html"
+            cachefile = cache_path.with_name("universalforwarder.html")
         else:
-            cachefile = "previous-releases.html"
+            cachefile = cache_path.with_name("previous-releases.html")
 
         if not os.path.exists(cachefile):
             download_page(url, cache_file=cachefile)
@@ -72,7 +61,7 @@ def get_and_parse(url: str, cached: bool) -> List[Any]:
         with open(cachefile, "r", encoding="utf8") as file_handle:
             soup = BeautifulSoup(file_handle.read(), "html.parser")
     else:
-        soup = BeautifulSoup(download_page(url), "html.parser")
+        soup = BeautifulSoup(download_page(url, None), "html.parser")
     links = soup.find_all("a", class_="splunk-btn")
     retlinks = []
     for link in links:
