@@ -8,7 +8,7 @@ import sys
 from typing import Any, List, Optional
 
 
-from bs4 import BeautifulSoup  # type: ignore
+from bs4 import BeautifulSoup
 import click
 from loguru import logger
 import requests
@@ -65,6 +65,9 @@ def get_and_parse(url: str, cached: bool, cache_path: Optional[Path] = None) -> 
     links = soup.find_all("a", class_="splunk-btn")
     retlinks = []
     for link in links:
+        if not hasattr(link, "attrs"):
+            logger.debug("No attrs on link, skipping: {}", link)
+            continue
         if link.attrs.get(TARGET_LINK_ATTR, None) is not None:
             datalink = link.attrs.get(TARGET_LINK_ATTR)
             if datalink.endswith(".ogg"):
