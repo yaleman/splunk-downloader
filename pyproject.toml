@@ -1,18 +1,18 @@
 [project]
 name = "splunk-downloader"
-version = "0.2.0"
+version = "0.2.1"
 license = { text = "MIT" }
 authors = [{ name = "James Hodgkinson", email = "james@terminaloutcomes.com" }]
 description = "Download your Splunk binaries with this quick tool."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "beautifulsoup4>=4.12.3",
-    "click>=8.1.7",
+    "beautifulsoup4>=4.14.3",
+    "click>=8.3.2",
     "loguru>=0.7.2",
-    "packaging>=24.1",
-    "pydantic>=2.9.1",
-    "requests>=2.32.3",
+    "packaging>=26.1",
+    "pydantic>=2.13.1",
+    "requests>=2.33.1",
 ]
 
 [project.scripts]
@@ -20,33 +20,19 @@ splunk-downloader = "splunk_downloader:cli"
 
 [tool.uv]
 package = true
-dev-dependencies = [
-    "mypy>=1.11.2",
-    "pytest>=8.3.3",
-    "ruff>=0.6.5",
-    "types-requests>=2.32.0.20240907",
-]
-
-
-[tool.pylint.MASTER]
-max-line-length = 200
-
-disable = "W0511,consider-using-dict-items,duplicate-code"
-
-# https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
-extension-pkg-whitelist = "pydantic"
-load-plugins = "pylint_pydantic"
-
-[tool.ruff]
-line-length = 150
-
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["coverage>=7.8.0"]
+dev = [
+    "coverage>=7.8.0",
+    "mypy>=1.20.1",
+    "pytest>=9.0.3",
+    "ty>=0.0.31",
+    "types-requests>=2.33.0.20260408",
+]
 
 
 [tool.coverage.report]

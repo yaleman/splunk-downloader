@@ -1,19 +1,19 @@
 """Splunk downloader"""
 
-import os
 from datetime import datetime
 from pathlib import Path
+from typing import Any, List, Optional
+import os
 import re
 import sys
-from typing import Any, List, Optional
-
-
-from bs4 import BeautifulSoup
-import click
+import urllib.parse
+from bs4 import BeautifulSoup, Tag
+from bs4.element import ResultSet
 from loguru import logger
-import requests
 from packaging.version import Version
 from pydantic import BaseModel, ConfigDict
+import click
+import requests
 
 from .constants import PACKAGES, TARGET_LINK_ATTR, TARGET_LINK_ATTR_FALLBACK, URLS
 
@@ -32,8 +32,20 @@ def download_page(url: str, cache_file: Optional[Path]) -> bytes:
     return response.content
 
 
-def get_and_parse(url: str, cached: bool, cache_path: Optional[Path] = None) -> List[str]:
+def get_and_parse(
+    url: str, cached: bool, cache_path: Optional[Path] = None
+) -> List[str]:
     """grabs the url and soups it, returning a list of links"""
+
+    try:
+        parsed_url = urllib.parse.urlparse(
+            url
+        )  # just to validate the url, we don't actually use the result
+        if not parsed_url.scheme or not parsed_url.netloc:
+            raise ValueError(f"URL '{url}' is missing a scheme or netloc")
+    except Exception as e:
+        raise ValueError(f"Invalid URL '{url}': {e}")
+
     if cached:
         # this should only really be used for debugging and
         # you need to download the URLs with
@@ -62,23 +74,27 @@ def get_and_parse(url: str, cached: bool, cache_path: Optional[Path] = None) -> 
             soup = BeautifulSoup(file_handle.read(), "html.parser")
     else:
         soup = BeautifulSoup(download_page(url, None), "html.parser")
-    links = soup.find_all("a", class_="splunk-btn")
+    links: ResultSet[Tag] = soup.find_all("a", class_="splunk-btn")
     retlinks = []
     for link in links:
         if not hasattr(link, "attrs"):
             logger.debug("No attrs on link, skipping: {}", link)
             continue
-        if link.attrs.get(TARGET_LINK_ATTR, None) is not None:
-            datalink = link.attrs.get(TARGET_LINK_ATTR)
+        datalink: Optional[str] = getattr(link.attrs, TARGET_LINK_ATTR, None)
+        if datalink is not None:
             if datalink.endswith(".ogg"):
                 logger.debug("Skipping .ogg link, weirdos: {}", link)
                 continue
             if datalink not in links:
                 retlinks.append(datalink)
                 logger.debug("Adding link to links: {}", datalink)
-        elif link.attrs.get(TARGET_LINK_ATTR_FALLBACK, None) is not None:
+        elif getattr(link.attrs, TARGET_LINK_ATTR_FALLBACK, None) is not None:
             logger.debug("Falling back to wget link")
-            datalink = link.attrs.get(TARGET_LINK_ATTR_FALLBACK).split(" ")[-1].replace('"', "")
+            datalink = (
+                getattr(link.attrs, TARGET_LINK_ATTR_FALLBACK, "")
+                .split(" ")[-1]
+                .replace('"', "")
+            )
             if datalink.endswith(".ogg"):
                 logger.debug("Skipping .ogg wget link, weirdos: {}", link)
                 continue
@@ -86,7 +102,9 @@ def get_and_parse(url: str, cached: bool, cache_path: Optional[Path] = None) -> 
                 retlinks.append(datalink)
                 logger.debug("Adding wget link to links: {}", datalink)
         else:
-            logger.debug("Skipping link, doesn't have attr '{}': {}", TARGET_LINK_ATTR, link)
+            logger.debug(
+                "Skipping link, doesn't have attr '{}': {}", TARGET_LINK_ATTR, link
+            )
     return retlinks
 
 
@@ -99,8 +117,7 @@ def download_link(url: str) -> bool:
     logger.info("Downloading {}", url)
     # this is intentionally a long-running task
     try:
-        # pylint: disable=missing-timeout
-        download_response = requests.get(url)
+        download_response = requests.get(url, timeout=300)
         download_response.raise_for_status()
     except requests.exceptions.Timeout as timeout_error:
         logger.error("Timed out downloading from {}: {}", url, timeout_error)
@@ -217,7 +234,9 @@ def setup_logging(
     default=False,
     help="Use a locally cached version of the source data.",
 )
-@click.option("--arch", "-a", help="CPU Architecture filter - based on filename which is messy")
+@click.option(
+    "--arch", "-a", help="CPU Architecture filter - based on filename which is messy"
+)
 @click.option("--debug", "-d", is_flag=True, default=False, help="Enable debug mode")
 @click.option(
     "--download",
@@ -226,7 +245,9 @@ def setup_logging(
     default=False,
     help="Prompt to download to the local directory",
 )
-@click.argument("application", type=click.Choice(["enterprise", "forwarder"], case_sensitive=False))
+@click.argument(
+    "application", type=click.Choice(["enterprise", "forwarder"], case_sensitive=False)
+)
 @click.option(
     "--version",
     "-v",
@@ -237,7 +258,9 @@ def setup_logging(
     "--os",
     "-o",
     "os_filter",
-    type=click.Choice(["windows", "linux", "solaris", "osx", "freebsd", "aix"], case_sensitive=False),
+    type=click.Choice(
+        ["windows", "linux", "solaris", "osx", "freebsd", "aix"], case_sensitive=False
+    ),
     help="OS string to match, valid options for Enterprise: (linux|windows|osx), Forwarder: (windows|linux|solaris|osx|freebsd|aix)",
 )
 @click.option(
@@ -256,7 +279,7 @@ def setup_logging(
     is_flag=True,
     help="Show only the latest version for any given os/package/arch combination.",
 )
-def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
+def cli(
     application: Optional[str] = None,
     debug: bool = False,
     version_filter: str = "",
@@ -316,11 +339,15 @@ def cli(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 
         if version_filter:
             if not str(link_data.version).startswith(version_filter):
-                logger.debug("Skipping {} as version does not match {}", link, link_data)
+                logger.debug(
+                    "Skipping {} as version does not match {}", link, link_data
+                )
                 continue
         if packagetype:
             if not packagetype == link_data.package_type:
-                logger.debug("Skipping {} as package type does not match", link, packagetype)
+                logger.debug(
+                    "Skipping {} as package type does not match", link, packagetype
+                )
                 continue
         if arch:
             if link_data.arch.lower() != arch.lower():

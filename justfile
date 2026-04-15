@@ -1,15 +1,20 @@
-default: checks
+default: list
+
+[private]
+list:
+    just --list
 
 test:
     uv run pytest
 
 lint:
-    uv run ruff check splunk_downloader tests
+    uv run ruff check
 
-mypy :
+types:
     uv run mypy --strict splunk_downloader tests
+    uv run ty check
 
-checks: lint mypy test
+check: lint types test
 
 # run coverage checks and output html
 coverage:

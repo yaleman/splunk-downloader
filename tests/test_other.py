@@ -19,9 +19,13 @@ def test_download_page() -> None:
 def test_get_and_parse() -> None:
     logging.basicConfig(level=logging.INFO)
     with pytest.raises(ValueError):
-        get_and_parse("invalid_url", True, cache_path=False)  # type: ignore[arg-type]
+        get_and_parse("invalid_url", True, cache_path=None)
     with pytest.raises(FileNotFoundError):
-        get_and_parse("invalid_url", True, cache_path=Path("/asdfasfasldkfjhaslfkhjdsaflksdhjf"))
+        get_and_parse(
+            "https://example.com",
+            True,
+            cache_path=Path("/asdfasfasldkfjhaslfkhjdsaflksdhjf"),
+        )
 
     def _test_get_and_parse(url: str, cached: bool, with_temp_dir: bool) -> None:
         if with_temp_dir:
