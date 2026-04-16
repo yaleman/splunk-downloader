@@ -80,21 +80,19 @@ def get_and_parse(
         if not hasattr(link, "attrs"):
             logger.debug("No attrs on link, skipping: {}", link)
             continue
-        datalink: Optional[str] = getattr(link.attrs, TARGET_LINK_ATTR, None)
+        datalink = link.attrs.get(TARGET_LINK_ATTR, None)
         if datalink is not None:
-            if datalink.endswith(".ogg"):
+            if str(datalink).endswith(".ogg"):
                 logger.debug("Skipping .ogg link, weirdos: {}", link)
                 continue
             if datalink not in links:
                 retlinks.append(datalink)
                 logger.debug("Adding link to links: {}", datalink)
-        elif getattr(link.attrs, TARGET_LINK_ATTR_FALLBACK, None) is not None:
+            continue
+        datalink_fallback = link.attrs.get(TARGET_LINK_ATTR_FALLBACK, None)
+        if datalink_fallback is not None:
             logger.debug("Falling back to wget link")
-            datalink = (
-                getattr(link.attrs, TARGET_LINK_ATTR_FALLBACK, "")
-                .split(" ")[-1]
-                .replace('"', "")
-            )
+            datalink = str(datalink_fallback).split(" ")[-1].replace('"', "")
             if datalink.endswith(".ogg"):
                 logger.debug("Skipping .ogg wget link, weirdos: {}", link)
                 continue
