@@ -11,7 +11,6 @@ lint:
     uv run ruff check
 
 types:
-    uv run mypy --strict splunk_downloader tests
     uv run ty check
 
 check: lint types test

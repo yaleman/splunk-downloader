@@ -28,7 +28,6 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "coverage>=7.8.0",
-    "mypy>=1.20.1",
     "pytest>=9.0.3",
     "ty>=0.0.31",
     "types-requests>=2.33.0.20260408",

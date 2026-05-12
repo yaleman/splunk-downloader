@@ -15,4 +15,4 @@ jobs:
       - name: Running type checking
         run: |
           python -m pip install --quiet --no-cache-dir --upgrade uv
-          make types
+          uv run ty check

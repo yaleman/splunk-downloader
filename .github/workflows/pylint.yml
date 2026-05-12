@@ -4,7 +4,7 @@ name: Python Linting
 "on":
   push:
     branches:
-      - main  # Set a branch to deploy
+      - main
   pull_request:
 
 jobs:
@@ -12,14 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Running tests
         run: |
           python --version
           python -m pip install --quiet --no-cache-dir --upgrade uv
-          uv run ruff check $(basename $(pwd) | sed -E 's/-/_/g') tests/
+          uv run ruff check
