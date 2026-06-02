@@ -82,7 +82,8 @@ def get_and_parse(
             continue
         datalink = link.attrs.get(TARGET_LINK_ATTR, None)
         if datalink is not None:
-            if str(datalink).endswith(".ogg"):
+            datalink = str(datalink)
+            if datalink.endswith(".ogg"):
                 logger.debug("Skipping .ogg link, weirdos: {}", link)
                 continue
             if datalink not in links:

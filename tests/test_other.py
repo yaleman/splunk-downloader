@@ -43,7 +43,7 @@ def test_get_and_parse() -> None:
 
     # Run all tasks in parallel
     with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(func, *args) for func, *args in tasks]  # type: ignore[arg-type]
+        futures = [executor.submit(func, *args) for func, *args in tasks]  # ty: ignore[invalid-argument-type] # type: ignore[arg-type]
         for future in as_completed(futures):
             # This will raise any exceptions that occurred in the threads
             future.result()
