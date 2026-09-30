@@ -1,26 +1,27 @@
 """Splunk downloader"""
 
-from datetime import datetime
-from pathlib import Path
-from typing import Any, List, Optional
 import os
 import re
 import sys
 import urllib.parse
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import click
+import requests
 from bs4 import BeautifulSoup, Tag
 from bs4.element import ResultSet
 from loguru import logger
 from packaging.version import Version
 from pydantic import BaseModel, ConfigDict
-import click
-import requests
 
 from .constants import PACKAGES, TARGET_LINK_ATTR, TARGET_LINK_ATTR_FALLBACK, URLS
 
 PACKAGE_MATCHER = re.compile(r"(" + "|".join(PACKAGES) + ")$")
 
 
-def download_page(url: str, cache_file: Optional[Path]) -> bytes:
+def download_page(url: str, cache_file: Path | None) -> bytes:
     """download the page and store it if cache_file is set"""
     logger.debug("Pulling URL {}", url)
     response = requests.get(url, timeout=30)
@@ -32,9 +33,7 @@ def download_page(url: str, cache_file: Optional[Path]) -> bytes:
     return response.content
 
 
-def get_and_parse(
-    url: str, cached: bool, cache_path: Optional[Path] = None
-) -> List[str]:
+def get_and_parse(url: str, cached: bool, cache_path: Path | None = None) -> list[str]:
     """grabs the url and soups it, returning a list of links"""
 
     try:
@@ -43,7 +42,7 @@ def get_and_parse(
         )  # just to validate the url, we don't actually use the result
         if not parsed_url.scheme or not parsed_url.netloc:
             raise ValueError(f"URL '{url}' is missing a scheme or netloc")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         raise ValueError(f"Invalid URL '{url}': {e}")
 
     if cached:
@@ -150,7 +149,7 @@ class LinkData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-def filter_by_latest(endstate: List[LinkData]) -> List[LinkData]:
+def filter_by_latest(endstate: list[LinkData]) -> list[LinkData]:
     """filters by the latest version"""
     seen_list = []
     results = []
@@ -164,7 +163,7 @@ def filter_by_latest(endstate: List[LinkData]) -> List[LinkData]:
     return results
 
 
-def get_data_from_url(url: str) -> Optional[LinkData]:
+def get_data_from_url(url: str) -> LinkData | None:
     """returns the version from the url"""
     version_finder = re.compile(r"releases\/(?P<version>[^\/]+)\/(?P<os>[^\/]+)")
 
@@ -210,7 +209,7 @@ def get_arch_from_package(url: str) -> str:
 def setup_logging(
     logger_object: Any = logger,
     debug: bool = True,
-    log_sink: Optional[Any] = sys.stderr,
+    log_sink: Any | None = sys.stderr,
 ) -> None:
     """does logging configuration"""
     # use the one from the environment, where possible
@@ -279,14 +278,14 @@ def setup_logging(
     help="Show only the latest version for any given os/package/arch combination.",
 )
 def cli(
-    application: Optional[str] = None,
+    application: str | None = None,
     debug: bool = False,
     version_filter: str = "",
-    os_filter: Optional[str] = None,
+    os_filter: str | None = None,
     download: bool = False,
     cached: bool = False,
-    packagetype: Optional[str] = None,
-    arch: Optional[str] = None,
+    packagetype: str | None = None,
+    arch: str | None = None,
     latest: bool = False,
 ) -> None:
     """does the CLI thing"""
@@ -317,7 +316,7 @@ def cli(
     if packagetype != "":
         logger.debug("looking for package type: {}", packagetype)
 
-    results: List[LinkData] = []
+    results: list[LinkData] = []
     links = get_and_parse(url=URLS[application], cached=cached)
     try:
         links = links + get_and_parse(url=URLS[f"{application}_current"], cached=cached)
@@ -331,34 +330,28 @@ def cli(
             logger.debug("Skipping {}, data is None", link)
             continue
 
-        if os_filter:
-            if link_data.os != os_filter:
-                logger.debug("Skipping {} as os does not match {}", link, os_filter)
-                continue
+        if os_filter and link_data.os != os_filter:
+            logger.debug("Skipping {} as os does not match {}", link, os_filter)
+            continue
 
-        if version_filter:
-            if not str(link_data.version).startswith(version_filter):
-                logger.debug(
-                    "Skipping {} as version does not match {}", link, link_data
-                )
-                continue
-        if packagetype:
-            if not packagetype == link_data.package_type:
-                logger.debug(
-                    "Skipping {} as package type does not match", link, packagetype
-                )
-                continue
-        if arch:
-            if link_data.arch.lower() != arch.lower():
-                continue
-
+        if version_filter and not str(link_data.version).startswith(version_filter):
+            logger.debug("Skipping {} as version does not match {}", link, link_data)
+            continue
+        if packagetype and packagetype != link_data.package_type:
+            logger.debug(
+                "Skipping {} as package type does not match", link, packagetype
+            )
+            continue
+        if arch and link_data.arch.lower() != arch.lower():
+            logger.debug("Skipping {} as architecture does not match {}", link, arch)
+            continue
         if link_data not in results:
             results.append(link_data)
     if not results:
         logger.error("No results found")
         return
 
-    endstate: List[LinkData] = sorted(results, key=lambda k: k.version, reverse=True)
+    endstate: list[LinkData] = sorted(results, key=lambda k: k.version, reverse=True)
 
     # filter by latest
     if latest:
