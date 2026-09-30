@@ -1,0 +1,27 @@
+[tools]
+uv = "latest"
+
+
+[tasks.fmt]
+run = "uv run ruff format"
+
+[tasks.ruff]
+run = "uv run ruff check"
+depends = ["fmt"]
+
+[tasks.ty]
+run = "uv run ty check"
+depends = ["fmt"]
+
+[tasks.test]
+run = "uv run pytest"
+
+[tasks.check]
+depends = ["ruff", "ty", "test"]
+
+[tasks.coverage]
+run = [
+    "uv run coverage run -m pytest",
+    '''uv run coverage html --include="splunk_downloader/*"''',
+    "open htmlcov/index.html",
+]
