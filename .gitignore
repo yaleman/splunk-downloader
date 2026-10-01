@@ -15,3 +15,4 @@ build/
 poetry.lock
 cache/*
 .coverage
+*.spec

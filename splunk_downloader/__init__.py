@@ -1,10 +1,13 @@
 """Splunk downloader"""
 
+import csv
 import os
 import re
 import sys
+import time
 import urllib.parse
-from datetime import datetime
+from collections.abc import Generator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -19,15 +22,20 @@ from pydantic import BaseModel, ConfigDict
 from .constants import PACKAGES, TARGET_LINK_ATTR, TARGET_LINK_ATTR_FALLBACK, URLS
 
 PACKAGE_MATCHER = re.compile(r"(" + "|".join(PACKAGES) + ")$")
+VERSION_FINDER = re.compile(r"releases\/(?P<version>[^\/]+)\/(?P<os>[^\/]+)")
+
+PACKAGE_VERSION = "0.2.3"
 
 
 def download_page(url: str, cache_file: Path | None) -> bytes:
     """download the page and store it if cache_file is set"""
     logger.debug("Pulling URL {}", url)
-    response = requests.get(url, timeout=30)
+    response = requests.get(
+        url, timeout=30, headers={"User-Agent": f"splunk-downloader/{PACKAGE_VERSION}"}
+    )
     response.raise_for_status()
     if cache_file is not None:
-        logger.warning("Writing {}", cache_file)
+        logger.info("Writing {}", cache_file)
         with open(cache_file, "wb") as file_handle:
             file_handle.write(response.content)
     return response.content
@@ -39,7 +47,7 @@ def get_and_parse(url: str, cached: bool, cache_path: Path | None = None) -> lis
     try:
         parsed_url = urllib.parse.urlparse(
             url
-        )  # just to validate the url, we don't actually use the result
+        )  # validate the url is right, we don't actually use the result
         if not parsed_url.scheme or not parsed_url.netloc:
             raise ValueError(f"URL '{url}' is missing a scheme or netloc")
     except Exception as e:  # noqa: BLE001
@@ -52,10 +60,9 @@ def get_and_parse(url: str, cached: bool, cache_path: Path | None = None) -> lis
         logger.debug("Using cached file")
         if cache_path is None:
             cache_path = Path("./cache/")
-        if not isinstance(cache_path, Path):
-            raise ValueError(f"Cache path '{cache_path}' must be a Path object")
         if not cache_path.exists():
-            raise FileNotFoundError(f"Cache path '{cache_path}' does not exist!")
+            cache_path.mkdir(parents=True, exist_ok=True)
+            logger.info("Created cache directory at {}", cache_path)
         if not cache_path.is_dir():
             raise ValueError(f"Cache path '{cache_path}' is not a directory!")
         if "forwarder" in url:
@@ -64,10 +71,15 @@ def get_and_parse(url: str, cached: bool, cache_path: Path | None = None) -> lis
             cachefile = cache_path.with_name("previous-releases.html")
 
         if not os.path.exists(cachefile):
-            download_page(url, cache_file=cachefile)
+            logger.info("Cached file not found, downloading {} to {}", url, cachefile)
+            try:
+                download_page(url, cache_file=cachefile)
+            except Exception as e:  # noqa: BLE001
+                logger.error("Failed to download page {}: {}", url, e)
+                return []
         else:
             update_time = os.stat(cachefile).st_mtime
-            file_age = round(datetime.now().timestamp() - update_time, 0)
+            file_age = round(datetime.now(UTC).timestamp() - update_time, 0)
             logger.info("Cache file {} is {} seconds old.", cachefile, file_age)
         with open(cachefile, "r", encoding="utf8") as file_handle:
             soup = BeautifulSoup(file_handle.read(), "html.parser")
@@ -148,6 +160,40 @@ class LinkData(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    def __hash__(self) -> int:
+        return hash((self.os, self.arch, self.package_type, self.url, self.version))
+
+
+def parse_livehybrid() -> Generator[LinkData, None, None]:
+    cache_path = Path("./cache") / "livehybrid.tsv"
+    url = "https://livehybrid.github.io/downloadSplunk/downloads.tsv"
+    if cache_path.exists() and os.stat(cache_path).st_mtime > time.time() - 86400:
+        logger.info("Using cached file at {}", cache_path)
+        data_content = cache_path.read_text()
+    else:
+        data_content = download_page(url, cache_path).decode("utf-8")
+
+    tsv_reader = csv.reader(data_content.splitlines(keepends=False), delimiter="\t")
+    for row in tsv_reader:
+        if row[0].strip().startswith("#"):
+            continue
+        try:
+            (package_type, version, _filehash, paths) = row
+        except ValueError as e:
+            logger.error("Failed to parse row {}: {}", row, e)
+            continue
+
+        for package_path in paths.split():
+            # eg https://download.splunk.com/products/splunk/releases/10.4.4/windows/splunk-10.4.4-f0f12fcdcaa1-windows-x64.msi
+            this_link = LinkData(
+                os=package_path.split("/")[0],
+                arch=get_arch_from_package(package_path),
+                package_type=package_type,
+                url=f"https://download.splunk.com/products/splunk/releases/{version}/{package_path}",
+                version=Version(version),
+            )
+            yield this_link
+
 
 def filter_by_latest(endstate: list[LinkData]) -> list[LinkData]:
     """filters by the latest version"""
@@ -159,20 +205,16 @@ def filter_by_latest(endstate: list[LinkData]) -> list[LinkData]:
         if seen.model_dump() not in seen_list:
             seen_list.append(seen.model_dump())
             results.append(result)
-
     return results
 
 
 def get_data_from_url(url: str) -> LinkData | None:
     """returns the version from the url"""
-    version_finder = re.compile(r"releases\/(?P<version>[^\/]+)\/(?P<os>[^\/]+)")
 
-    result = version_finder.search(url)
+    result = VERSION_FINDER.search(url)
     if not result:
         raise ValueError(f"Couldn't get version from url: {url}")
     versionmatch = result.groupdict()
-    if "version" not in versionmatch:
-        raise ValueError("Version not found in versionmatch")
 
     package_type = PACKAGE_MATCHER.search(url)
     if package_type is None:
@@ -277,6 +319,12 @@ def setup_logging(
     is_flag=True,
     help="Show only the latest version for any given os/package/arch combination.",
 )
+@click.option(
+    "--include-livehybrid",
+    is_flag=True,
+    default=False,
+    help="Include links from https://livehybrid.github.io/downloadSplunk/ in the results.",
+)
 def cli(
     application: str | None = None,
     debug: bool = False,
@@ -287,6 +335,7 @@ def cli(
     packagetype: str | None = None,
     arch: str | None = None,
     latest: bool = False,
+    include_livehybrid: bool = False,
 ) -> None:
     """does the CLI thing"""
     setup_logging(logger, debug)
@@ -316,37 +365,44 @@ def cli(
     if packagetype != "":
         logger.debug("looking for package type: {}", packagetype)
 
-    results: list[LinkData] = []
+    results: set[LinkData] = set()
     links = get_and_parse(url=URLS[application], cached=cached)
     try:
         links = links + get_and_parse(url=URLS[f"{application}_current"], cached=cached)
     except KeyError:
         pass
 
+    links: list[LinkData | None] = [
+        get_data_from_url(link) for link in links if get_data_from_url(link) is not None
+    ]
+    links: list[LinkData] = [link for link in links if link is not None]
+
+    if include_livehybrid:
+        try:
+            links.extend(parse_livehybrid())
+        except Exception as e:  # noqa: BLE001
+            logger.error("Failed to include livehybrid links: {}", e)
+
     for link in links:
         logger.debug("Checking link {}", link)
-        link_data = get_data_from_url(link)
-        if link_data is None:
-            logger.debug("Skipping {}, data is None", link)
-            continue
 
-        if os_filter and link_data.os != os_filter:
+        if os_filter and link.os != os_filter:
             logger.debug("Skipping {} as os does not match {}", link, os_filter)
             continue
 
-        if version_filter and not str(link_data.version).startswith(version_filter):
-            logger.debug("Skipping {} as version does not match {}", link, link_data)
+        if version_filter and not str(link.version).startswith(version_filter):
+            logger.debug("Skipping {} as version does not match {}", link, link)
             continue
-        if packagetype and packagetype != link_data.package_type:
+        if packagetype and packagetype != link.package_type:
             logger.debug(
                 "Skipping {} as package type does not match", link, packagetype
             )
             continue
-        if arch and link_data.arch.lower() != arch.lower():
+        if arch and link.arch.lower() != arch.lower():
             logger.debug("Skipping {} as architecture does not match {}", link, arch)
             continue
-        if link_data not in results:
-            results.append(link_data)
+        if link.model_dump() not in [r.model_dump() for r in results]:
+            results.add(link)
     if not results:
         logger.error("No results found")
         return

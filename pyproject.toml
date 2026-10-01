@@ -1,19 +1,20 @@
 [project]
 name = "splunk-downloader"
-version = "0.2.2"
-license = { text = "MIT" }
+version = "0.2.3"
+license = "MIT"
 authors = [{ name = "James Hodgkinson", email = "james@terminaloutcomes.com" }]
 description = "Download your Splunk binaries with this quick tool."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "beautifulsoup4>=4.14.3",
-    "click>=8.4.1",
+    "beautifulsoup4>=4.15.0",
+    "click>=8.5.0",
     "loguru>=0.7.2",
-    "packaging>=26.1",
-    "pydantic>=2.13.1",
+    "packaging>=26.3",
+    "pydantic>=2.13.5",
     "requests>=2.34.2",
 ]
+
 
 [project.scripts]
 splunk-downloader = "splunk_downloader:cli"
@@ -27,10 +28,11 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "coverage>=7.8.0",
-    "pytest>=9.0.3",
-    "ruff>=0.15.12",
-    "ty>=0.0.31",
+    "coverage>=7.16.2",
+    "pyinstaller>=6.22.3",
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+    "ty>=0.0.84",
     "types-requests>=2.33.0.20260408",
 ]
 

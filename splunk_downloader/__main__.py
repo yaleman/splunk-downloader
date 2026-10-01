@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """please only use this if you actually accept the T&C's of using splunk software
 
 requires the following python packages:

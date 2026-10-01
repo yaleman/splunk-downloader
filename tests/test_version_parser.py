@@ -1,6 +1,6 @@
 """tests semver things"""
 
-from splunk_downloader import get_data_from_url, PACKAGE_MATCHER
+from splunk_downloader import PACKAGE_MATCHER, get_data_from_url
 
 TEST_DATA = {
     "7.2.9.1": [
@@ -30,9 +30,8 @@ TEST_DATA = {
 
 def test_more_things() -> None:
     """more tests based on live data"""
-
-    for version in TEST_DATA:
-        for url in TEST_DATA[version]:
+    for version, urls in TEST_DATA.items():
+        for url in urls:
             result = get_data_from_url(url)
             assert result
             assert str(result.version) == version
