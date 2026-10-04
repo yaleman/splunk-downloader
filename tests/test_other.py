@@ -8,26 +8,32 @@ import pytest
 import requests.exceptions
 from loguru import logger
 
-from splunk_downloader import download_page, get_and_parse, get_data_from_url
+from splunk_downloader import SplunkDownloader, get_data_from_url
 from splunk_downloader.constants import URLS
 
 
-def test_download_page() -> None:
-    download_page("https://yaleman.org", None)
+@pytest.fixture
+def downloader() -> SplunkDownloader:
+    return SplunkDownloader(cache=False)
+
+
+def test_download_page(downloader: SplunkDownloader) -> None:
+
+    downloader.download_page("https://yaleman.org", None)
 
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        download_page("https://yaleman.org", Path(temp_file.name))
+        downloader.download_page("https://yaleman.org", Path(temp_file.name))
 
 
-def test_get_and_parse() -> None:
+def test_get_and_parse(downloader: SplunkDownloader) -> None:
     logging.basicConfig(level=logging.INFO)
     with pytest.raises(ValueError):
-        get_and_parse("invalid_url", True, cache_path=None)
+        downloader.get_and_parse("invalid_url", cached=True, cache_path=None)
     with tempfile.TemporaryDirectory() as temp_dir:
         cache_path = Path(temp_dir) / "asdfasfasldkfjhaslfkhjdsaflksdhjf"
-        get_and_parse(
+        downloader.get_and_parse(
             "https://example.com",
-            True,
+            cached=True,
             cache_path=cache_path,
         )
         assert cache_path.exists()
@@ -35,9 +41,9 @@ def test_get_and_parse() -> None:
     def _test_get_and_parse(url: str, cached: bool, with_temp_dir: bool) -> None:
         if with_temp_dir:
             with tempfile.TemporaryDirectory() as temp_dir:
-                get_and_parse(url, cached, Path(temp_dir))
+                downloader.get_and_parse(url, cached=cached, cache_path=Path(temp_dir))
         else:
-            get_and_parse(url, cached, None)
+            downloader.get_and_parse(url, cached=cached, cache_path=None)
 
     tasks = []
     try:
@@ -60,6 +66,9 @@ def test_get_and_parse() -> None:
             # This will raise any exceptions that occurred in the threads
             try:
                 future.result()
+            except requests.exceptions.ReadTimeout as timeout_error:
+                logger.error("ReadTimeout occurred: {}", timeout_error)
+                continue
             except requests.exceptions.HTTPError as http_error:
                 if http_error.response.status_code == 500:
                     logger.error(
@@ -70,9 +79,13 @@ def test_get_and_parse() -> None:
                     raise requests.exceptions.HTTPError from http_error
 
 
-def test_cache_path_is_file() -> None:
+def test_cache_path_is_file(downloader: SplunkDownloader) -> None:
     with pytest.raises(ValueError, match="is not a directory"):
-        get_and_parse("https://example.com", True, cache_path=Path(__file__))
+        downloader.get_and_parse(
+            "https://example.com",
+            cache_path=Path(__file__),
+            cached=True,
+        )
 
 
 def test_get_data_from_url() -> None:
@@ -83,10 +96,9 @@ def test_get_data_from_url() -> None:
     assert get_data_from_url(test_with_no_package) is None
 
 
-def test_livehybrid() -> None:
-    from splunk_downloader import parse_livehybrid
+def test_livehybrid(downloader: SplunkDownloader) -> None:
 
-    results = list(parse_livehybrid())
+    results = list(downloader.parse_livehybrid())
     assert all(hasattr(link, "url") for link in results)
     assert all(hasattr(link, "version") for link in results)
     assert all(hasattr(link, "os") for link in results)
