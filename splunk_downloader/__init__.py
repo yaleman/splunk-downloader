@@ -132,6 +132,7 @@ class SplunkDownloader:
             logger.info("Using cached file at {}", cache_path)
             data_content = cache_path.read_text()
         else:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
             data_content = self.download_page(url, cache_path).decode("utf-8")
 
         tsv_reader = csv.reader(data_content.splitlines(keepends=False), delimiter="\t")

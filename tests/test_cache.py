@@ -42,3 +42,30 @@ def test_uncached_request_does_not_access_cache(
 
     assert downloader.get_and_parse(URLS["enterprise"]) == ["live"]
     assert list(tmp_path.iterdir()) == []
+
+
+def test_livehybrid_creates_cache_after_uncached_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    downloader = SplunkDownloader(cache=False)
+    data = (
+        b"enterprise\t10.0.0\thash\t"
+        b"linux/splunk-10.0.0-hash-linux-x86_64.tgz\n"
+    )
+    downloader.session.get = Mock(
+        side_effect=[Mock(content=b"<html></html>"), Mock(content=data)]
+    )
+    monkeypatch.chdir(tmp_path)
+
+    assert downloader.get_and_parse(URLS["enterprise"]) == []
+    assert not (tmp_path / "cache").exists()
+
+    links = list(downloader.parse_livehybrid())
+    assert len(links) == 1
+    assert links[0].url == (
+        "https://download.splunk.com/products/splunk/releases/10.0.0/"
+        "linux/splunk-10.0.0-hash-linux-x86_64.tgz"
+    )
+    assert (tmp_path / "cache" / "livehybrid.tsv").read_bytes() == data
+    assert list(downloader.parse_livehybrid()) == links
+    assert downloader.session.get.call_count == 2
