@@ -63,22 +63,15 @@ class SplunkDownloader:
         """grabs the url and soups it, returning a list of links"""
 
         self._validate_url(url)
-        if cache_path is None:
-            cache_path = Path("./cache/")
-        if not cache_path.exists():
-            cache_path.mkdir(parents=True, exist_ok=True)
-            logger.info("Created cache directory at {}", cache_path)
-        if not cache_path.is_dir():
-            raise ValueError(f"Cache path '{cache_path}' is not a directory!")
-        if "forwarder" in url:
-            cache_file = cache_path.with_name("universalforwarder.html")
-        else:
-            cache_file = cache_path.with_name("previous-releases.html")
-
         if cached or self.cache:
-            # this should only really be used for debugging and
-            # you need to download the URLs with
-            # wget or something first
+            if cache_path is None:
+                cache_path = Path("./cache/")
+            if not cache_path.exists():
+                cache_path.mkdir(parents=True, exist_ok=True)
+                logger.info("Created cache directory at {}", cache_path)
+            if not cache_path.is_dir():
+                raise ValueError(f"Cache path '{cache_path}' is not a directory!")
+            cache_file = cache_path / Path(urllib.parse.urlparse(url).path).name
             logger.info("Using cached file")
 
             if not os.path.exists(cache_file):
@@ -98,7 +91,7 @@ class SplunkDownloader:
                 soup = BeautifulSoup(file_handle.read(), "html.parser")
         else:
             soup = BeautifulSoup(
-                self.download_page(url, cache_file=cache_file), "html.parser"
+                self.download_page(url, cache_file=None), "html.parser"
             )
         links: ResultSet[Tag] = soup.find_all("a", class_="splunk-btn")
         retlinks = []
