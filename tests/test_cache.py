@@ -7,6 +7,20 @@ from splunk_downloader import SplunkDownloader
 from splunk_downloader.constants import URLS
 
 
+@pytest.mark.parametrize("url", ["https://example.com", "https://example.com/"])
+def test_cached_root_url_uses_a_file(tmp_path: Path, url: str) -> None:
+    downloader = SplunkDownloader(cache=True)
+    downloader.session.get = Mock(
+        return_value=Mock(content=b'<a class="splunk-btn" data-link="root"></a>')
+    )
+    cache_path = tmp_path / "cache"
+
+    assert downloader.get_and_parse(url, cache_path) == ["root"]
+    assert (cache_path / "index.html").is_file()
+    assert downloader.get_and_parse(url, cache_path) == ["root"]
+    downloader.session.get.assert_called_once()
+
+
 @pytest.mark.parametrize("application", ["enterprise", "forwarder"])
 def test_cached_release_pages_remain_distinct(tmp_path: Path, application: str) -> None:
     downloader = SplunkDownloader(cache=True)
@@ -48,10 +62,7 @@ def test_livehybrid_creates_cache_after_uncached_request(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     downloader = SplunkDownloader(cache=False)
-    data = (
-        b"enterprise\t10.0.0\thash\t"
-        b"linux/splunk-10.0.0-hash-linux-x86_64.tgz\n"
-    )
+    data = b"enterprise\t10.0.0\thash\tlinux/splunk-10.0.0-hash-linux-x86_64.tgz\n"
     downloader.session.get = Mock(
         side_effect=[Mock(content=b"<html></html>"), Mock(content=data)]
     )

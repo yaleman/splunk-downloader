@@ -71,7 +71,8 @@ class SplunkDownloader:
                 logger.info("Created cache directory at {}", cache_path)
             if not cache_path.is_dir():
                 raise ValueError(f"Cache path '{cache_path}' is not a directory!")
-            cache_file = cache_path / Path(urllib.parse.urlparse(url).path).name
+            cache_name = Path(urllib.parse.urlparse(url).path).name or "index.html"
+            cache_file = cache_path / cache_name
             logger.info("Using cached file")
 
             if not os.path.exists(cache_file):

@@ -29,6 +29,7 @@ def test_get_and_parse(downloader: SplunkDownloader) -> None:
     logging.basicConfig(level=logging.INFO)
     with pytest.raises(ValueError):
         downloader.get_and_parse("invalid_url", cached=True, cache_path=None)
+
     with tempfile.TemporaryDirectory() as temp_dir:
         cache_path = Path(temp_dir) / "asdfasfasldkfjhaslfkhjdsaflksdhjf"
         downloader.get_and_parse(
